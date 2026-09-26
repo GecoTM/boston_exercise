@@ -1,0 +1,130 @@
+---
+title: "Analisi del dataset Boston sulla variabilità del prezzo mediano"
+author: "Jacopo Timo"
+date: "2025-06-06"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+<div class="text-justify">
+
+Il dataset "Boston" raccoglie al suo interno diversi dati, ordinati tramite 14 variabili e 506 osservazioni inerenti alle zone residenziali dell'omonima città del Massachusetts. L'obiettivo di questa ricerca è quello di spiegare come il prezzo mediano (medv) di un'abitazione bostoniana cambi in base all'influenza delle altre variabili presenti nel dataset. Più precisamente, prenderemo in considerazione la variabilità del prezzo mediano basandoci sul numero di stanze (rm) presenti nelle abitazioni e, per verificare se vi sia una relazione tra le due, ci aiuteremo attraverso la costruzione di un modello di regressione lineare semplice in cui:\
+
+Y = prezzo mediano per abitazione, sarà la nostra variabile risposta\
+X = numero di stanze presenti, sarà la nostra variabile esplicativa\
+
+In seguito, proveremo a potenziare il nostro modello affiancando alla variabile rm un'altra variabile esplicativa, quella di lstat, in riferimento alla percentuale di persone appartenenti a contesti socio-economici più svantaggiati.\
+
+Iniziamo caricando i pacchetti necessari per la nostra ricerca e calcolando le statistiche descrittive del nostro dataset:\
+
+```{r}
+install.packages("MASS")
+install.packages("ISLR2")
+install.packages("ggplot2")
+install.packages("reshape2")
+install.packages("corrplot")
+install.packages("psych")
+```
+
+
+```{r}
+library(MASS)
+library(ISLR2)
+library(ggplot2)
+library(reshape2)
+library(corrplot)
+library(psych)
+```
+
+
+```{r}
+boston <- read.csv("Boston.csv")
+head(boston)
+summary(boston)
+psych::describe(boston)
+```
+
+```{r}
+modello1 <- lm(medv ~ rm, data = boston)
+summary(modello1)
+
+range(boston$rm)
+mean(boston$rm)
+
+corrplot(cor(boston), method = "square")
+```
+
+Dal calcolo della regressione lineare semplice risulta che l'intercetta β₀ è uguale a -34.671 e che il regressore β₁ aumenta di 9.102 per ogni unità di x. Ne deriva che il modello di regressione lineare semplice sarà rappresentato dalla formula:\
+$$ŷ = -34.671 + 9.102x$$
+
+Si tratta ovviamente di un valore indicativo, considerato che non esistono abitazioni senza stanze e che, in media, una casa a Boston ha circa sei stanze al suo interno (mean = 6.284634). Dal valore dell'indice R² notiamo che il modello riesce a spiegare solo il 48% della variabilità del prezzo mediano, lasciando intendere che quest'ultimo potrebbe essere influenzato da altre osservazioni. Il grafico ci aiuta a visualizzare la correlazione tra le variabili, compreso il prezzo mediano e il numero di stanze per abitazione, che risulta, da un primo punto di vista, la correlazione positiva più forte.\
+
+```{r}
+ggplot(boston, aes(x = rm, y = medv,)) +
+  geom_point() +
+  labs(x = "Stanze",
+       y = "Prezzo Mediano") +
+  geom_smooth(method=lm, se=FALSE) +
+  theme_minimal()
+
+d_scatola <- ggplot(boston, aes(medv)) +
+    geom_boxplot() +
+  theme_minimal()
+  
+print(d_scatola)
+```
+
+Il diagramma a dispersione dimostra la presenza di una relazione lineare positiva tra le due variabili (medv ~ rm), per cui il prezzo mediano tende ad aumentare parallelamente al numero di stanze presenti in un'abitazione. con una nube di punti che si concentra intorno ad un range di valori tra 5 e 7 (in riferimento alle stanze). Dal successivo diagramma a scatola, però, possiamo notare anche un alto numero di outlier, in particolar modo nel baffo superiore. Mentre il 50% delle osservazioni ci suggerisce che il prezzo mediano per abitazione oscilla tra il 17.000 e i 25.000 dollari, l'alta presenza di outlier ci porta a ipotizzare che la pendenza della retta di regressione possa essere influenzata in una certa misura da essi.\
+
+```{r}
+confint(modello1)
+```
+
+Calcolando gli intervalli di confidenza siamo sicuri al 95% che il valore dell'intercetta β₀ si troverà nell'intervallo di valori tra -39.876641 e -29.464601, mentre, per quanto riguarda il regressore β₁, siamo sicuri al 95% che l'impatto del numero stanze sul prezzo mediano delle case sarà rappresentato da un valore compreso tra 8.278855 e 9.925363 migliaia di dollari.\
+
+Come detto in precedenza, in media un'abitazione a Boston ha al suo interno circa 6 stanze. Proviamo a calcolare, dunque, gli intervalli di confidenza e gli intervalli di previsione basandoci su questo valore:\
+
+```{r}
+predict(modello1, data.frame(rm = (6)),
+    interval = "confidence")
+predict(modello1, data.frame(rm = (6)),
+    interval = "prediction")
+```
+
+L'intervallo di confidenza suggerisce che il prezzo medio di una casa con sei stanze a Boston si attesta a poco meno di 20.000 dollari, con un valore minimo di 19.31847 dollari e un valore massimo di 20.5656 dollari. Mentre in questo primo caso vi è un intervallo piuttosto piccolo, in quanto calcoliamo la media del valore di tutte le abitazioni con 6 stanze, nel secondo caso, quello dell'intervallo di previsione, troviamo un range più ampio, perché ci concentriamo su una singola osservazione. Nello specifico, mentre il prezzo medio previsto è sempre uguale a 19.94203 dollari, il valori minimo e massimo previsti saranno uguali rispettivamente a 6.928435 dollari e 32.95563 dollari.\
+
+Considerato che la variabile esplicativa rm è in grado di spiegare solo il 48% della variabilità del prezzo mediano di un'abitazione, potremmo potenziare la nostra analisi aggiungendo una seconda variabile esplicativa, ovvero, lstat, in riferimento alla percentuale di zone a basso reddito:\ 
+
+```{r}
+modello2 <- lm(medv ~ rm + lstat, data = boston)
+summary(modello2)
+```
+Tale modello di regressione lineare multipla è rappresentato dalla formula:
+
+$$ŷ = -1.35827 + 5.09479x₁ - 0.64236x₂$$
+
+per cui l'intercetta β₀ è uguale a -1.35827 (anche in questo caso è un valore indicativo), mentre i regressori β₁ e β₂ sono uguali a 5.09479 e -0.64236. Grazie alla variabile lstat notiamo che il modello è ora in grado di spiegare il 64% della variabilità di medv (R² = 0.6371), anche se i p-value associati all'intercetta risultano superiori allo 0,5 (p-value = 0.669).\
+
+Prendendo in considerazione la media di lstat (12%) proviamo a calcolare gli intervalli di confidenza e di previsione insieme alla media di rm (6 stanze):\ 
+
+```{r}
+mean(boston$lstat)
+
+predict(modello2, data.frame(rm = (6), lstat = (12)),
+    interval = "confidence")
+predict(modello2, data.frame(rm = (6), lstat = (12)),
+    interval = "prediction")
+```
+
+Ne consegue che la media del prezzo di una casa a Boston con sei stanze e la presenza in zona di circa il 12% di popolazione appartenente a contesti socio-economici svantaggiati sia di 21.50216 dollari, con intervalli di confidenza che vanno da 20.93984 a 22.06447 migliaia di dollari e intervalli di previsione che vanno da 10.60274 a 32.40157 migliaia di dollari.\
+
+```{r}
+plot(predict(modello2), residuals(modello2))
+```
+
+Come possiamo vedere dal grafico, i residui del modello di previsione (modello2) oscillano in modo casuale attorno allo zero.\
+
+</div>
+
